@@ -15,3 +15,9 @@ class JsonParsingSpec extends munit.FunSuite:
     val json = printer.print(note.asJson)
     assertEquals(parser.decode[Note](json), Right(note))
   }
+
+  test("parse CreateNote") {
+    val createNote = CreateNote("Scala.js is fun!", "Great times ahead.")
+    val json = printer.print(createNote.asJson)
+    assertEquals(parser.decode[CreateNote](json), Right(createNote))
+  }
