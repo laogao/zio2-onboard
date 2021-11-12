@@ -30,7 +30,7 @@ object WebPage:
   form.className = "note-form"
 
   val appContainer: Div = div(
-    h1("My Notepad"),
+    h1("My Notes"),
     form
   )
   appContainer.id = "app-container"
