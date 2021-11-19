@@ -6,19 +6,11 @@ import scala.jdk.CollectionConverters.*
 import java.nio.file.{Path, Paths, Files, StandardOpenOption}
 import java.util.UUID
 
-import cats.syntax.either.*
-
-import io.circe.syntax.*
-import io.circe.parser.decode
-import io.circe.Printer
+import zio.json.*
 
 trait Repository extends NoteService
 
 object Repository:
-  private val printer: Printer = Printer(
-    dropNullValues = true,
-    indent = ""
-  )
 
   def apply(directory: Path)(using ExecutionContext): Repository =
     if !Files.exists(directory) then Files.createDirectory(directory)
@@ -32,7 +24,7 @@ object Repository:
         .filter(_.toString.endsWith(".json"))
         .map { file =>
           val bytes = Files.readAllBytes(file)
-          decode[Note](new String(bytes)).valueOr(throw _)
+          JsonDecoder[Note].decodeJson(new String(bytes)).toOption.get
         }
         .toSeq
     }
@@ -41,7 +33,7 @@ object Repository:
       val id = UUID.randomUUID().toString
       val note = Note(id, title, content)
       val file = directory.resolve(s"$id.json")
-      val bytes = printer.print(note.asJson).getBytes
+      val bytes = note.toJson.getBytes
       Files.write(file, bytes, StandardOpenOption.CREATE)
       note
     }

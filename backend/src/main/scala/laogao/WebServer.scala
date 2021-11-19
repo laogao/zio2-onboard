@@ -8,7 +8,7 @@ import java.nio.file.Paths
 
 import scala.concurrent.ExecutionContext
 
-object WebServer extends server.Directives with CirceSupport:
+object WebServer extends server.Directives with JsonSupport:
   @main def start =
     given system: ActorSystem = ActorSystem("webserver")
     given ExecutionContext = system.dispatcher

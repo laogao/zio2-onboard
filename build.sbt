@@ -5,8 +5,7 @@ lazy val shared = crossProject(JSPlatform, JVMPlatform)
   .in(file("shared"))
   .settings(
     libraryDependencies ++= Seq(
-      "io.circe" %%% "circe-generic" % "0.14.1",
-      "io.circe" %%% "circe-parser" % "0.14.1",
+      "dev.zio" %%% "zio-json" % "0.2.0-M2",
       "org.scalameta" %%% "munit" % "0.7.29" % Test
     )
   )
