@@ -8,20 +8,9 @@ import java.io.IOException
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 
-// import io.circe.scalajs.*
-// import io.circe.syntax.*
-// import io.circe.parser.decode
-// import io.circe.Printer
-
-// import cats.syntax.either.*
-
 import zio.json.*
 
 class HttpClient(using ExecutionContext) extends NoteService:
-  // private val printer: Printer = Printer(
-  //   dropNullValues = true,
-  //   indent = ""
-  // )
 
   def getAllNotes(): Future[Seq[Note]] =
     for

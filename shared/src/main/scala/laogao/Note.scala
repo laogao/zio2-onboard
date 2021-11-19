@@ -1,6 +1,6 @@
 package laogao
 
-import zio.json._
+import zio.json.*
 
 final case class Note(id: String, title: String, content: String)
 
