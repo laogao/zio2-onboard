@@ -1,6 +1,6 @@
 package laogao
 
-import org.scalajs.dom.experimental.*
+import org.scalajs.dom.*
 import scala.scalajs.js
 
 import java.io.IOException
@@ -33,5 +33,5 @@ class HttpClient(using ExecutionContext) extends NoteService:
 
   extension (resp: Response)
     private def jsonOrFailure: Future[js.Any] =
-      if resp.ok then resp.json.toFuture
+      if resp.ok then resp.json().toFuture
       else Future.failed(new IOException(resp.statusText))

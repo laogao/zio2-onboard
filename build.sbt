@@ -1,11 +1,13 @@
-ThisBuild / scalaVersion := "3.0.2"
+ThisBuild / scalaVersion := "3.1.0"
 
 lazy val shared = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
   .in(file("shared"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %%% "zio-json" % "0.2.0-M2",
+      "dev.zio" %%% "zio-json" % "0.2.0-M2+3-3c32be42-SNAPSHOT",
+      "io.circe" %%% "circe-generic" % "0.14.1",
+      "io.circe" %%% "circe-parser" % "0.14.1",
       "org.scalameta" %%% "munit" % "0.7.29" % Test
     )
   )
@@ -16,7 +18,8 @@ lazy val frontend = project
   .settings(
     scalaJSUseMainModuleInitializer := true,
     libraryDependencies ++= Seq(
-      "org.scala-js" %%% "scalajs-dom" % "1.2.0" cross CrossVersion.for3Use2_13
+      "org.scala-js" %%% "scalajs-dom" % "2.0.0",
+      "com.raquo" %%% "laminar" % "0.14.2"
     )
   )
   .dependsOn(shared.js)
