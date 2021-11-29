@@ -45,5 +45,7 @@ object WebPage:
 
   @main def start: Unit =
     document.body.appendChild(appContainer)
-
-    for notes <- service.getAllNotes(); note <- notes do addNote(note)
+    for
+      notes <- service.getAllNotes()
+      note <- notes
+    do addNote(note)

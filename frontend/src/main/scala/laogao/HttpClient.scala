@@ -10,13 +10,17 @@ import scala.concurrent.ExecutionContext
 
 import zio.json.*
 
+import io.circe.scalajs.*
+import io.circe.syntax.*
+import cats.syntax.either.*
+
 class HttpClient(using ExecutionContext) extends NoteService:
 
   def getAllNotes(): Future[Seq[Note]] =
     for
       resp <- Fetch.fetch("./api/notes").toFuture
       json <- resp.jsonOrFailure
-    yield JsonDecoder[Seq[Note]].decodeJson(json.toString).toOption.get
+    yield decodeJs[Seq[Note]](json).valueOr(throw _)
 
   def createNote(title: String, content: String): Future[Note] =
     val request = Request(
@@ -29,7 +33,7 @@ class HttpClient(using ExecutionContext) extends NoteService:
     for
       resp <- Fetch.fetch(request).toFuture
       json <- resp.jsonOrFailure
-    yield JsonDecoder[Note].decodeJson(json.toString).toOption.get
+    yield decodeJs[Note](json).valueOr(throw _)
 
   extension (resp: Response)
     private def jsonOrFailure: Future[js.Any] =
