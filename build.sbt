@@ -4,10 +4,9 @@ lazy val quill = project
   .in(file("quill"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %%% "zio" % "2.0.0-M6-2",
-      "dev.zio" %%% "zio-json" % "0.2.0-M3",
-      "io.circe" %%% "circe-generic" % "0.14.1",
-      "io.circe" %%% "circe-parser" % "0.14.1"
+      "dev.zio" %% "zio" % "2.0.0-M6-2",
+      "io.getquill" %% "quill-sql" % "3.10.0.Beta1.6",
+      "io.getquill" %% "quill-jdbc" % "3.10.0.Beta1.6"
     )
   )
 
