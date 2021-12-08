@@ -1,5 +1,16 @@
 ThisBuild / scalaVersion := "3.1.0"
 
+lazy val quill = project
+  .in(file("quill"))
+  .settings(
+    libraryDependencies ++= Seq(
+      "dev.zio" %%% "zio" % "2.0.0-M6-2",
+      "dev.zio" %%% "zio-json" % "0.2.0-M3",
+      "io.circe" %%% "circe-generic" % "0.14.1",
+      "io.circe" %%% "circe-parser" % "0.14.1"
+    )
+  )
+
 lazy val shared = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
   .in(file("shared"))
