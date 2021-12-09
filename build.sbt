@@ -6,7 +6,12 @@ lazy val quill = project
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio" % "2.0.0-M6-2",
       "io.getquill" %% "quill-sql" % "3.10.0.Beta1.6",
-      "io.getquill" %% "quill-jdbc" % "3.10.0.Beta1.6"
+      "io.getquill" %% "quill-jdbc" % "3.10.0.Beta1.6",
+      "io.getquill" %% "quill-jdbc-zio" % "3.10.0.Beta1.6",
+      "io.getquill" %% "quill-jasync-postgres" % "3.10.0.Beta1.6",
+      "org.postgresql" % "postgresql" % "42.3.1",
+      "org.flywaydb" % "flyway-core" % "8.2.1",
+      "com.typesafe" % "config" % "1.4.1"
     )
   )
 

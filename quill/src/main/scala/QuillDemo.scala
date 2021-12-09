@@ -1,18 +1,39 @@
+import com.typesafe.config.ConfigFactory
 import zio.Console.{printLine, readLine}
 import zio.ZIOAppDefault
+import zio.Task
+import org.flywaydb.core.Flyway
 
 object QuillDemo extends ZIOAppDefault:
 
-  def run =
+  val dbMigration = Task {
+    val config = ConfigFactory.load
+    val flyway = Flyway
+      .configure()
+      .dataSource(
+        config.getString("quill.dataSource.url"),
+        config.getString("quill.dataSource.user"),
+        config.getString("quill.dataSource.password"))
+      .load()
+    flyway.migrate()
+  }
+
+  val quillExample = Task {
     import io.getquill.*
-    val ctx = SqlMirrorContext(MirrorSqlDialect, Literal)
+    case class Person(firstName: String, lastName: String, age: Int)
+    val ctx = new PostgresJdbcContext(SnakeCase, "quill")
     import ctx.*
-    val pi = quote(3.1415926)
-    case class Circle(radius: Float)
-    val area = quote { (c: Circle) => { val r2 = c.radius * c.radius ; pi * r2 } }
-    val areas = quote { query[Circle].map(c => pi * c.radius * c.radius) }
-    println(area)
-    println(areas)
+    val named = "Joe"
+    inline def somePeople = quote {
+      query[Person].filter(p => p.firstName == lift(named))
+    }
+    val people: List[Person] = ctx.run(somePeople)
+    println(people)
+  }
+
+  def run =
     for {
+      _ <- dbMigration
+      _ <- quillExample
       _ <- printLine("Hello, world!")
     } yield ()

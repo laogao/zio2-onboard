@@ -1,0 +1,9 @@
+version: '2'
+services:
+  quill-postgresql:
+    image: postgres:14.1
+    environment:
+      - POSTGRES_USER=quill
+      - POSTGRES_PASSWORD=quill
+    ports:
+      - 5432:5432
