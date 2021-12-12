@@ -14,6 +14,7 @@ object QuillDemo extends ZIOAppDefault:
         config.getString("quill.dataSource.url"),
         config.getString("quill.dataSource.user"),
         config.getString("quill.dataSource.password"))
+      .locations("classpath:db/migration") // this is the default
       .load()
     flyway.migrate()
   }
