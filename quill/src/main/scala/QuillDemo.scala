@@ -1,10 +1,8 @@
 import com.typesafe.config.ConfigFactory
-import zio.Console.{printLine, readLine}
-import zio.ZIOAppDefault
-import zio.Task
+import zio.{ExitCode, Task}
 import org.flywaydb.core.Flyway
 
-object QuillDemo extends ZIOAppDefault:
+object QuillDemo extends zio.App {
 
   val dbMigration = Task {
     val config = ConfigFactory.load
@@ -20,21 +18,26 @@ object QuillDemo extends ZIOAppDefault:
   }
 
   val quillExample = Task {
-    import io.getquill.*
-    case class Person(firstName: String, lastName: String, age: Int)
+    import io.getquill._
+    case class Person(id: Int, firstName: String, lastName: String, age: Int)
     val ctx = new PostgresJdbcContext(SnakeCase, "quill")
-    import ctx.*
+    import ctx._
     val named = "Joe"
-    inline def somePeople = quote {
+    def somePeople = quote {
       query[Person].filter(p => p.firstName == lift(named))
     }
+
     val people: List[Person] = ctx.run(somePeople)
     println(people)
   }
 
-  def run =
+  def program =
     for {
       _ <- dbMigration
       _ <- quillExample
-      _ <- printLine("Hello, world!")
+      _ <- zio.console.putStrLn("Hello, world!")
     } yield ()
+
+  override def run(args: List[String]) = program.exitCode
+
+}

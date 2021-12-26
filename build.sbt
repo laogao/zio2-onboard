@@ -3,16 +3,17 @@ ThisBuild / scalaVersion := "3.1.0"
 lazy val quill = project
   .in(file("quill"))
   .settings(
+    scalaVersion := "2.13.7",
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio" % "2.0.0-M6-2",
-      "io.getquill" %% "quill-sql" % "3.10.0.Beta1.6",
-      "io.getquill" %% "quill-jdbc" % "3.10.0.Beta1.6",
-      "io.getquill" %% "quill-jdbc-zio" % "3.10.0.Beta1.6",
-      "io.getquill" %% "quill-jasync-postgres" % "3.10.0.Beta1.6",
+      "dev.zio" %% "zio" % "1.0.13",
+      "io.getquill" %% "quill-jdbc-zio" % "3.12.0",
       "org.postgresql" % "postgresql" % "42.3.1",
-      "org.flywaydb" % "flyway-core" % "8.2.1",
+      "dev.zio" %% "zio-macros" % "1.0.12",
+      "io.github.kitlangton" %% "zio-magic" % "0.3.11",
+      "org.flywaydb" % "flyway-core" % "8.2.3",
       "com.typesafe" % "config" % "1.4.1"
-    )
+    ),
+    scalacOptions ++= Seq("-Ymacro-annotations")
   )
 
 lazy val shared = crossProject(JSPlatform, JVMPlatform)
