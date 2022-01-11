@@ -16,6 +16,24 @@ lazy val quill = project
     scalacOptions ++= Seq("-Ymacro-annotations")
   )
 
+lazy val protoquill = project
+  .in(file("protoquill"))
+  .settings(
+    libraryDependencies ++= Seq(
+      "dev.zio" %% "zio" % "1.0.13",
+      "io.getquill" %% "quill-jdbc-zio" % "3.12.0.Beta1.7",
+      "org.postgresql" % "postgresql" % "42.3.1",
+      "org.flywaydb" % "flyway-core" % "8.2.3",
+      "com.typesafe" % "config" % "1.4.1"
+    ),
+    excludeDependencies ++= Seq(
+      ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13"),
+      ExclusionRule("com.lihaoyi", "sourcecode_2.13"),
+      ExclusionRule("com.lihaoyi", "fansi_2.13"),
+      ExclusionRule("com.lihaoyi", "pprint_2.13")
+    )
+  )
+
 lazy val shared = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
   .in(file("shared"))
