@@ -20,7 +20,8 @@ object ProtoQuillDemo extends zio.App:
       .dataSource(
         config.getString("quill.dataSource.url"),
         config.getString("quill.dataSource.user"),
-        config.getString("quill.dataSource.password"))
+        config.getString("quill.dataSource.password")
+      )
       .locations("classpath:db/migration") // this is the default
       .load()
     flyway.migrate()
@@ -43,7 +44,7 @@ object ProtoQuillDemo extends zio.App:
   object QuillContext extends PostgresZioJdbcContext(SnakeCase):
     val dataSourceLayer: ULayer[Has[DataSource]] =
       DataSourceLayer.fromPrefix("quill").orDie
-  
+
   import QuillContext.*
   import io.getquill.*
 
@@ -58,9 +59,10 @@ object ProtoQuillDemo extends zio.App:
       query[Person]
     }
 
-  val composed: IO[SQLException, List[Person]] = {
-    QuillContext.run(Queries.personNamed(lift("Jane"))).provideLayer(dataSourceLayer)
-  }
+  val composed: IO[SQLException, List[Person]] =
+    QuillContext
+      .run(Queries.personNamed(lift("Jane")))
+      .provideLayer(dataSourceLayer)
 
   def program =
     for {
@@ -71,4 +73,3 @@ object ProtoQuillDemo extends zio.App:
     } yield ()
 
   override def run(args: List[String]) = program.exitCode
-
