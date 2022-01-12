@@ -1,12 +1,15 @@
 import com.typesafe.config.ConfigFactory
-import org.flywaydb.core.Flyway
-import zio.{ExitCode, Task}
-import com.typesafe.config.ConfigFactory
-import zio.{ExitCode, Task, IO}
+import io.getquill.EntityQuery
+import io.getquill.PostgresZioJdbcContext
+import io.getquill.Quoted
+import io.getquill.SnakeCase
 import io.getquill.context.ZioJdbc.DataSourceLayer
-import io.getquill.{PostgresZioJdbcContext, SnakeCase}
-import zio.{Has, ULayer}
-import io.getquill.{EntityQuery, Quoted}
+import org.flywaydb.core.Flyway
+import zio.ExitCode
+import zio.Has
+import zio.IO
+import zio.Task
+import zio.ULayer
 
 import java.sql.SQLException
 import javax.sql.DataSource
