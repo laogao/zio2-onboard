@@ -32,7 +32,7 @@ object QuillDemo extends zio.App {
   }
 
   val composed: IO[SQLException, List[Person]] = {
-    run(Queries.personOlderThan(lift(1))).provide(QuillContext.dataSourceLayer)
+    QuillContext.run(Queries.allPersons).provideLayer(dataSourceLayer)
   }
 
   def program =
