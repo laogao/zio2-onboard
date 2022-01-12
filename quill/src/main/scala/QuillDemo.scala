@@ -1,21 +1,7 @@
 import com.typesafe.config.ConfigFactory
 import zio.{ExitCode, Task}
-import org.flywaydb.core.Flyway
 
 object QuillDemo extends zio.App {
-
-  val dbMigration = Task {
-    val config = ConfigFactory.load
-    val flyway = Flyway
-      .configure()
-      .dataSource(
-        config.getString("quill.dataSource.url"),
-        config.getString("quill.dataSource.user"),
-        config.getString("quill.dataSource.password"))
-      .locations("classpath:db/migration") // this is the default
-      .load()
-    flyway.migrate()
-  }
 
   val quillExample = Task {
     import io.getquill._
@@ -33,9 +19,8 @@ object QuillDemo extends zio.App {
 
   def program =
     for {
-      _ <- dbMigration
       _ <- quillExample
-      _ <- zio.console.putStrLn("Hello, world!")
+      _ <- zio.console.putStrLn("Hello, Quill!")
     } yield ()
 
   override def run(args: List[String]) = program.exitCode
