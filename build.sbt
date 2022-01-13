@@ -24,7 +24,7 @@ lazy val protoquill = project
       "io.getquill" %% "quill-jdbc-zio" % "3.12.0.Beta1.7",
       "org.postgresql" % "postgresql" % "42.3.1",
       "org.flywaydb" % "flyway-core" % "8.2.3",
-      "com.typesafe" % "config" % "1.4.1"
+      "com.typesafe" % "config" % "1.4.1",
     ),
     excludeDependencies ++= Seq(
       ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13"),
