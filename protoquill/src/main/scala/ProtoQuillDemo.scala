@@ -1,3 +1,4 @@
+import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
@@ -22,36 +23,37 @@ import javax.sql.DataSource
 
 object ProtoQuillDemo extends zio.App:
 
-  val dataSourceLayer: ULayer[Has[DataSource]] =  ZLayer.fromEffectMany(
+  def propsFromConfigWithPrefix(source: Config, prefix: String): Properties = {
+    import scala.jdk.CollectionConverters.*
+    val props = new Properties()
+    source.entrySet.asScala.filter(_.getKey.startsWith(s"$prefix.")).foreach(entry =>
+      props.put(entry.getKey.substring(prefix.length + 1), entry.getValue.unwrapped)
+    )
+    props
+  } 
+
+  val dataSourceLayer: ULayer[Has[DataSource]] = ZLayer.fromEffectMany(
     Task.effect {
       val source = ConfigFactory.load
-      val props = new Properties()
-      props.setProperty("dataSourceClassName", source.getString("hikari.dataSourceClassName"));
-      props.setProperty("dataSource.serverName", source.getString("hikari.dataSource.serverName"));
-      props.setProperty("dataSource.portNumber", source.getString("hikari.dataSource.portNumber"));
-      props.setProperty("dataSource.user", source.getString("hikari.dataSource.user"));
-      props.setProperty("dataSource.password", source.getString("hikari.dataSource.password"));
-      props.setProperty("dataSource.databaseName", source.getString("hikari.dataSource.databaseName"));
-      val config = new HikariConfig(props)
+      val config = new HikariConfig(propsFromConfigWithPrefix(source, "quill"))
       new HikariDataSource(config).asInstanceOf[DataSource]
     }.map(ds => Has(ds))
   ).orDie
 
-  val dbMigrationLayer: ZLayer[Has[DataSource], Nothing, Has[DataSource]] = ZLayer.fromService(ds =>
+  val dbMigrationLayer: ZLayer[Has[DataSource], Nothing, Has[Unit]] = ZLayer.fromService(ds =>
     Flyway
       .configure()
       .dataSource(ds)
-      .locations("classpath:db/migration") // this is the default
+      .locations("classpath:db/migration")
       .load()
       .migrate()
-    ds
   )
+
+  val runtimeDependencies: ULayer[Has[DataSource]] = dataSourceLayer >+> dbMigrationLayer
 
   case class Person(id: Int, firstName: String, lastName: String, age: Int)
 
-  object QuillContext extends PostgresZioJdbcContext(SnakeCase):
-    val dataSourceLayer: ULayer[Has[DataSource]] =
-      DataSourceLayer.fromPrefix("quill").orDie
+  object QuillContext extends PostgresZioJdbcContext(SnakeCase)
 
   import QuillContext.*
   import io.getquill.*
@@ -70,7 +72,7 @@ object ProtoQuillDemo extends zio.App:
   val composed: IO[SQLException, List[Person]] =
     QuillContext
       .run(Queries.personNamed(lift("Jane")))
-      .provideLayer(dataSourceLayer >+> dbMigrationLayer)
+      .provideLayer(runtimeDependencies)
 
   def program =
     for {
