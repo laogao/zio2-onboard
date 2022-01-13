@@ -36,7 +36,7 @@ object ProtoQuillDemo extends zio.App:
     import io.getquill.*
     val ctx = new PostgresJdbcContext(SnakeCase, "quill")
     import ctx.*
-    val named = "Jane"
+    val named = "Joe"
     inline def somePeople = quote {
       query[Person].filter(p => p.firstName == lift(named))
     }
@@ -64,8 +64,8 @@ object ProtoQuillDemo extends zio.App:
 
   val composed: IO[SQLException, List[Person]] =
     QuillContext
-      .run(Queries.personNamed(lift("Jane")))
-      .provideLayer(dataSourceLayer)
+      .run(Queries.personNamed(lift("Joe")))
+      .provideLayer(HikariCPHelper.hikariDataSourceLayer)
 
   def program =
     for {
