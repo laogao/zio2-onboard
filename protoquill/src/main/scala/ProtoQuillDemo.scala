@@ -1,4 +1,6 @@
 import com.typesafe.config.ConfigFactory
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
 import io.getquill.EntityQuery
 import io.getquill.PostgresZioJdbcContext
 import io.getquill.Quoted
@@ -10,39 +12,42 @@ import zio.Has
 import zio.IO
 import zio.Task
 import zio.ULayer
+import zio.ZIO
+import zio.ZLayer
+import zio.console.putStrLn
 
 import java.sql.SQLException
+import java.util.Properties
 import javax.sql.DataSource
 
 object ProtoQuillDemo extends zio.App:
 
-  val dbMigration = Task {
-    val config = ConfigFactory.load
-    val flyway = Flyway
+  val dataSourceLayer: ULayer[Has[DataSource]] =  ZLayer.fromEffectMany(
+    Task.effect {
+      val source = ConfigFactory.load
+      val props = new Properties()
+      props.setProperty("dataSourceClassName", source.getString("hikari.dataSourceClassName"));
+      props.setProperty("dataSource.serverName", source.getString("hikari.dataSource.serverName"));
+      props.setProperty("dataSource.portNumber", source.getString("hikari.dataSource.portNumber"));
+      props.setProperty("dataSource.user", source.getString("hikari.dataSource.user"));
+      props.setProperty("dataSource.password", source.getString("hikari.dataSource.password"));
+      props.setProperty("dataSource.databaseName", source.getString("hikari.dataSource.databaseName"));
+      val config = new HikariConfig(props)
+      new HikariDataSource(config).asInstanceOf[DataSource]
+    }.map(ds => Has(ds))
+  ).orDie
+
+  val dbMigrationLayer: ZLayer[Has[DataSource], Nothing, Has[DataSource]] = ZLayer.fromService(ds =>
+    Flyway
       .configure()
-      .dataSource(
-        config.getString("quill.dataSource.url"),
-        config.getString("quill.dataSource.user"),
-        config.getString("quill.dataSource.password")
-      )
+      .dataSource(ds)
       .locations("classpath:db/migration") // this is the default
       .load()
-    flyway.migrate()
-  }
+      .migrate()
+    ds
+  )
 
   case class Person(id: Int, firstName: String, lastName: String, age: Int)
-
-  val quillExample = Task {
-    import io.getquill.*
-    val ctx = new PostgresJdbcContext(SnakeCase, "quill")
-    import ctx.*
-    val named = "Joe"
-    inline def somePeople = quote {
-      query[Person].filter(p => p.firstName == lift(named))
-    }
-    val people: List[Person] = ctx.run(somePeople)
-    println("[CONVENTIONAL QUERY] " + people)
-  }
 
   object QuillContext extends PostgresZioJdbcContext(SnakeCase):
     val dataSourceLayer: ULayer[Has[DataSource]] =
@@ -64,15 +69,13 @@ object ProtoQuillDemo extends zio.App:
 
   val composed: IO[SQLException, List[Person]] =
     QuillContext
-      .run(Queries.personNamed(lift("Joe")))
-      .provideLayer(HikariCPHelper.hikariDataSourceLayer)
+      .run(Queries.personNamed(lift("Jane")))
+      .provideLayer(dataSourceLayer >+> dbMigrationLayer)
 
   def program =
     for {
-      _ <- dbMigration
-      _ <- quillExample
       res <- composed
-      _ <- zio.console.putStrLn("[ZIO-COMPOSED QUERY] " + res)
+      _ <- putStrLn(s"$res")
     } yield ()
 
   override def run(args: List[String]) = program.exitCode
