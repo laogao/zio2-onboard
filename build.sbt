@@ -25,6 +25,7 @@ lazy val protoquill = project
       "org.postgresql" % "postgresql" % "42.3.1",
       "org.flywaydb" % "flyway-core" % "8.2.3",
       "com.typesafe" % "config" % "1.4.1",
+      "com.github.ghostdogpr" %% "caliban" % "1.3.2",
     ),
     excludeDependencies ++= Seq(
       ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13"),

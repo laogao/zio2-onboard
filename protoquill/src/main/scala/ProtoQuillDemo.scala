@@ -12,6 +12,7 @@ import zio.ExitCode
 import zio.Has
 import zio.IO
 import zio.Task
+import zio.UIO
 import zio.ULayer
 import zio.ZIO
 import zio.ZLayer
@@ -74,10 +75,29 @@ object ProtoQuillDemo extends zio.App:
       .run(Queries.personNamed(lift("Jane")))
       .provideLayer(runtimeDependencies)
 
+  val allPersonsComposed: IO[SQLException, List[Person]] =
+    QuillContext
+      .run(Queries.allPersons)
+      .provideLayer(runtimeDependencies)
+
+  import caliban.GraphQL.graphQL
+  import caliban.RootResolver
+
+  object GraphQL {
+    case class Queries(
+      allPersons: UIO[List[Person]]
+    )
+    val queryResolver = Queries(
+      allPersons = allPersonsComposed.orDie
+    )
+    val api = graphQL(RootResolver(queryResolver))
+  }
+
   def program =
     for {
-      res <- composed
-      _ <- putStrLn(s"$res")
+      interpreter <- GraphQL.api.interpreter
+      out <- interpreter.execute("""{allPersons{firstName, age}}""")
+      _ <- putStrLn(s"$out")
     } yield ()
 
   override def run(args: List[String]) = program.exitCode
