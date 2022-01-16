@@ -60,26 +60,26 @@ object ProtoQuillDemo extends zio.App:
   import io.getquill.*
 
   object Queries:
-    val personOlderThan = quote { (age: Int) =>
-      query[Person].filter(p => p.age > age)
-    }
-    val personNamed = quote { (name: String) =>
-      query[Person].filter(p => p.firstName == name)
-    }
-    val allPersons = quote {
-      query[Person]
-    }
+    inline def allPersons = query[Person]
+    inline def personNamed = (name: String) => query[Person].filter(p => p.firstName == name)
+    inline def personOlderThan = (age: Int) => query[Person].filter(p => p.age > age)
 
-  val composed: IO[SQLException, List[Person]] =
-    QuillContext
-      .run(Queries.personNamed(lift("Jane")))
-      .provideLayer(runtimeDependencies)
+  def allPersonsPrepared = 
+    QuillContext.run(Queries.allPersons)
 
-  val allPersonsComposed: IO[SQLException, List[Person]] =
-    QuillContext
-      .run(Queries.allPersons)
-      .provideLayer(runtimeDependencies)
+  def personNamedPrepared(name: String) = 
+    QuillContext.run(Queries.personNamed(lift(name)))
 
+  def personOlderThanPrepared(age: Int) = 
+    QuillContext.run(Queries.personOlderThan(lift(age)))
+
+  def executeQueries =
+    for {
+      all <- allPersonsPrepared
+      james <- personNamedPrepared("James")
+      adults <- personOlderThanPrepared(16)
+    } yield (all, james, adults)
+  
   import caliban.GraphQL.graphQL
   import caliban.RootResolver
 
@@ -88,13 +88,17 @@ object ProtoQuillDemo extends zio.App:
       allPersons: UIO[List[Person]]
     )
     val queryResolver = Queries(
-      allPersons = allPersonsComposed.orDie
+      allPersons = allPersonsPrepared.provideLayer(runtimeDependencies).orDie
     )
     val api = graphQL(RootResolver(queryResolver))
   }
 
   def program =
     for {
+      (all, james, adults) <- executeQueries.provideLayer(runtimeDependencies).orDie
+      _ <- putStrLn(s"$all")
+      _ <- putStrLn(s"$james")
+      _ <- putStrLn(s"$adults")
       interpreter <- GraphQL.api.interpreter
       out <- interpreter.execute("""{allPersons{firstName, age}}""")
       _ <- putStrLn(s"$out")
