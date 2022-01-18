@@ -6,4 +6,4 @@ services:
       - POSTGRES_USER=quill
       - POSTGRES_PASSWORD=quill
     ports:
-      - 5432:5432
+      - 15432:5432

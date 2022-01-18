@@ -35,6 +35,7 @@ object ProtoQuillDemo extends zio.App:
 
   val dataSourceLayer: ULayer[Has[DataSource]] = ZLayer.fromEffectMany(
     Task.effect {
+      println("creating datasource...")
       val source = ConfigFactory.load
       val config = new HikariConfig(propsFromConfigWithPrefix(source, "quill"))
       new HikariDataSource(config).asInstanceOf[DataSource]
@@ -88,20 +89,28 @@ object ProtoQuillDemo extends zio.App:
       allPersons: UIO[List[Person]]
     )
     val queryResolver = Queries(
-      allPersons = allPersonsPrepared.provideLayer(runtimeDependencies).orDie
+      allPersons = allPersonsPrepared.provideLayer(dataSourceLayer).orDie
     )
     val api = graphQL(RootResolver(queryResolver))
   }
 
-  def program =
+  import zhttp.http.*
+  import zhttp.service.Server
+  import caliban.ZHttpAdapter
+
+  val graphQLServer = 
     for {
-      (all, james, adults) <- executeQueries.provideLayer(runtimeDependencies).orDie
-      _ <- putStrLn(s"$all")
-      _ <- putStrLn(s"$james")
-      _ <- putStrLn(s"$adults")
       interpreter <- GraphQL.api.interpreter
       out <- interpreter.execute("""{allPersons{firstName, age}}""")
-      _ <- putStrLn(s"$out")
+      _ <- putStrLn(s"GraphQL interpreter built. Sample query result: $out.")
+      _ <- putStrLn(s"Starting HTTP server @ localhost:8088...")
+      _ <- Server.start(
+          8088,
+          Http.route {
+            case _ -> Root / "api" / "graphql" => ZHttpAdapter.makeHttpService(interpreter)
+            case _ -> Root / "ws" / "graphql"  => ZHttpAdapter.makeWebSocketService(interpreter)
+          }
+        ).forever
     } yield ()
 
-  override def run(args: List[String]) = program.exitCode
+  override def run(args: List[String]) = graphQLServer.exitCode
