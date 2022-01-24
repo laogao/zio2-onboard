@@ -21,6 +21,7 @@ lazy val protoquill = project
   .settings(
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio" % "1.0.13",
+      "dev.zio" %% "izumi-reflect" % "2.0.8",
       "io.getquill" %% "quill-jdbc-zio" % "3.12.0.Beta1.7",
       "org.postgresql" % "postgresql" % "42.3.1",
       "org.flywaydb" % "flyway-core" % "8.2.3",

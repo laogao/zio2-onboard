@@ -11,6 +11,7 @@ import org.flywaydb.core.Flyway
 import zio.ExitCode
 import zio.Has
 import zio.IO
+import zio.RIO
 import zio.Task
 import zio.UIO
 import zio.ULayer
@@ -21,6 +22,7 @@ import zio.console.putStrLn
 import java.sql.SQLException
 import java.util.Properties
 import javax.sql.DataSource
+import caliban.schema.Schema
 
 object ProtoQuillDemo extends zio.App:
 
@@ -33,13 +35,28 @@ object ProtoQuillDemo extends zio.App:
     props
   } 
 
+  trait DataSourceProvider {
+    def getDataSource: DataSource
+  }
+
+  object DataSourceProvider {
+    val live = new DataSourceProvider {
+      def getDataSource = {
+        println("creating datasource...")
+        val source = ConfigFactory.load
+        val config = new HikariConfig(propsFromConfigWithPrefix(source, "quill"))
+        new HikariDataSource(config).asInstanceOf[DataSource]
+      }
+    }
+  }
+
   val dataSourceLayer: ULayer[Has[DataSource]] = ZLayer.fromEffectMany(
-    Task.effect {
+    Task.effect( {
       println("creating datasource...")
       val source = ConfigFactory.load
       val config = new HikariConfig(propsFromConfigWithPrefix(source, "quill"))
       new HikariDataSource(config).asInstanceOf[DataSource]
-    }.map(ds => Has(ds))
+    }).map(ds => Has(ds))
   ).orDie
 
   val dbMigrationLayer: ZLayer[Has[DataSource], Nothing, Has[Unit]] = ZLayer.fromService(ds =>
@@ -86,11 +103,12 @@ object ProtoQuillDemo extends zio.App:
 
   object GraphQL {
     case class Queries(
-      allPersons: UIO[List[Person]]
+      allPersons: RIO[Has[DataSource], List[Person]]
     )
     val queryResolver = Queries(
-      allPersons = allPersonsPrepared.provideLayer(dataSourceLayer).orDie
+      allPersons = allPersonsPrepared.orDie
     )
+    implicit val queriesSchema: Schema[Has[DataSource], Queries] = Schema.gen
     val api = graphQL(RootResolver(queryResolver))
   }
 
@@ -100,6 +118,11 @@ object ProtoQuillDemo extends zio.App:
 
   val graphQLServer = 
     for {
+      has <- ZIO.environment
+      _ <- putStrLn(s"Has map were: $has")
+      ds <- ZIO.service[DataSource]
+      _ <- putStrLn(s"DataSource found: $ds")
+      _ <- putStrLn(s"DataSource#getConnection: ${ds.getConnection}")
       interpreter <- GraphQL.api.interpreter
       out <- interpreter.execute("""{allPersons{firstName, age}}""")
       _ <- putStrLn(s"GraphQL interpreter built. Sample query result: $out.")
@@ -113,4 +136,4 @@ object ProtoQuillDemo extends zio.App:
         ).forever
     } yield ()
 
-  override def run(args: List[String]) = graphQLServer.exitCode
+  override def run(args: List[String]) = graphQLServer.provideCustomLayer(dataSourceLayer).exitCode
