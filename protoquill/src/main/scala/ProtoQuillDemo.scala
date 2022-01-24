@@ -40,35 +40,33 @@ object ProtoQuillDemo extends zio.App:
   }
 
   object DataSourceProvider {
-    val live = new DataSourceProvider {
-      def getDataSource = {
+    val fallback = new DataSourceProvider {
+      lazy val ds = {
         println("creating datasource...")
         val source = ConfigFactory.load
         val config = new HikariConfig(propsFromConfigWithPrefix(source, "quill"))
         new HikariDataSource(config).asInstanceOf[DataSource]
       }
+      def getDataSource = ds
     }
   }
 
-  val dataSourceLayer: ULayer[Has[DataSource]] = ZLayer.fromEffectMany(
-    Task.effect( {
-      println("creating datasource...")
-      val source = ConfigFactory.load
-      val config = new HikariConfig(propsFromConfigWithPrefix(source, "quill"))
-      new HikariDataSource(config).asInstanceOf[DataSource]
-    }).map(ds => Has(ds))
+  val dataSourceLayer: ULayer[Has[DataSourceProvider]] = ZLayer.fromEffectMany(
+    Task.effect(DataSourceProvider.fallback).map(dsp => Has(dsp))
   ).orDie
 
-  val dbMigrationLayer: ZLayer[Has[DataSource], Nothing, Has[Unit]] = ZLayer.fromService(ds =>
+  val dbMigrationLayer: ZLayer[Has[DataSourceProvider], Nothing, Has[Unit]] = ZLayer.fromService(dsp =>
     Flyway
       .configure()
-      .dataSource(ds)
+      .dataSource(dsp.getDataSource)
       .locations("classpath:db/migration")
       .load()
       .migrate()
   )
 
-  val runtimeDependencies: ULayer[Has[DataSource]] = dataSourceLayer >+> dbMigrationLayer
+  val runtimeDependencies: ULayer[Has[DataSourceProvider]] = dataSourceLayer >+> dbMigrationLayer
+
+  val dataSourceLayerForQuill: ZLayer[Has[DataSourceProvider], Nothing, Has[DataSource]] = ZLayer.fromService(dsp => dsp.getDataSource)
 
   case class Person(id: Int, firstName: String, lastName: String, age: Int)
 
@@ -103,12 +101,12 @@ object ProtoQuillDemo extends zio.App:
 
   object GraphQL {
     case class Queries(
-      allPersons: RIO[Has[DataSource], List[Person]]
+      allPersons: RIO[Has[DataSourceProvider], List[Person]]
     )
     val queryResolver = Queries(
-      allPersons = allPersonsPrepared.orDie
+      allPersons = allPersonsPrepared.provideLayer(dataSourceLayerForQuill).orDie
     )
-    implicit val queriesSchema: Schema[Has[DataSource], Queries] = Schema.gen
+    implicit val queriesSchema: Schema[Has[DataSourceProvider], Queries] = Schema.gen
     val api = graphQL(RootResolver(queryResolver))
   }
 
@@ -120,9 +118,9 @@ object ProtoQuillDemo extends zio.App:
     for {
       has <- ZIO.environment
       _ <- putStrLn(s"Has map were: $has")
-      ds <- ZIO.service[DataSource]
+      ds <- ZIO.service[DataSourceProvider]
       _ <- putStrLn(s"DataSource found: $ds")
-      _ <- putStrLn(s"DataSource#getConnection: ${ds.getConnection}")
+      _ <- putStrLn(s"DataSource#getConnection: ${ds.getDataSource.getConnection}")
       interpreter <- GraphQL.api.interpreter
       out <- interpreter.execute("""{allPersons{firstName, age}}""")
       _ <- putStrLn(s"GraphQL interpreter built. Sample query result: $out.")
