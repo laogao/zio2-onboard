@@ -51,7 +51,7 @@ object ProtoQuillDemo extends zio.App:
     }
   }
 
-  val dataSourceLayer: ULayer[Has[DataSourceProvider]] = ZLayer.fromEffectMany(
+  val dataSourceProviderLayer: ULayer[Has[DataSourceProvider]] = ZLayer.fromEffectMany(
     Task.effect(DataSourceProvider.fallback).map(dsp => Has(dsp))
   ).orDie
 
@@ -64,9 +64,9 @@ object ProtoQuillDemo extends zio.App:
       .migrate()
   )
 
-  val runtimeDependencies: ULayer[Has[DataSourceProvider]] = dataSourceLayer >+> dbMigrationLayer
+  val dataSourceLayer: ZLayer[Has[DataSourceProvider], Nothing, Has[DataSource]] = ZLayer.fromService(dsp => dsp.getDataSource)
 
-  val dataSourceLayerForQuill: ZLayer[Has[DataSourceProvider], Nothing, Has[DataSource]] = ZLayer.fromService(dsp => dsp.getDataSource)
+  val runtimeDependencies: ULayer[Has[DataSourceProvider]] = dataSourceProviderLayer >+> dbMigrationLayer
 
   case class Person(id: Int, firstName: String, lastName: String, age: Int)
 
@@ -104,7 +104,7 @@ object ProtoQuillDemo extends zio.App:
       allPersons: RIO[Has[DataSourceProvider], List[Person]]
     )
     val queryResolver = Queries(
-      allPersons = allPersonsPrepared.provideLayer(dataSourceLayerForQuill).orDie
+      allPersons = allPersonsPrepared.provideLayer(dataSourceLayer).orDie
     )
     implicit val queriesSchema: Schema[Has[DataSourceProvider], Queries] = Schema.gen
     val api = graphQL(RootResolver(queryResolver))
@@ -134,4 +134,4 @@ object ProtoQuillDemo extends zio.App:
         ).forever
     } yield ()
 
-  override def run(args: List[String]) = graphQLServer.provideCustomLayer(dataSourceLayer).exitCode
+  override def run(args: List[String]) = graphQLServer.provideCustomLayer(runtimeDependencies).exitCode
