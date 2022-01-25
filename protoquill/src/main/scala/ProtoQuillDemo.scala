@@ -1,3 +1,4 @@
+import caliban.schema.Schema
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import com.zaxxer.hikari.HikariConfig
@@ -22,7 +23,6 @@ import zio.console.putStrLn
 import java.sql.SQLException
 import java.util.Properties
 import javax.sql.DataSource
-import caliban.schema.Schema
 
 object ProtoQuillDemo extends zio.App:
 
@@ -119,7 +119,7 @@ object ProtoQuillDemo extends zio.App:
       has <- ZIO.environment
       _ <- putStrLn(s"Has map were: $has")
       ds <- ZIO.service[DataSourceProvider]
-      _ <- putStrLn(s"DataSource found: $ds")
+      _ <- putStrLn(s"DataSourceProvider found: $ds")
       _ <- putStrLn(s"DataSource#getConnection: ${ds.getDataSource.getConnection}")
       interpreter <- GraphQL.api.interpreter
       out <- interpreter.execute("""{allPersons{firstName, age}}""")
