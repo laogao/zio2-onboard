@@ -33,7 +33,7 @@ object ProtoQuillDemo extends zio.App:
       props.put(entry.getKey.substring(prefix.length + 1), entry.getValue.unwrapped)
     )
     props
-  } 
+  }
 
   trait DataSourceProvider {
     def getDataSource: DataSource
@@ -54,6 +54,24 @@ object ProtoQuillDemo extends zio.App:
   val dataSourceProviderLayer: ULayer[Has[DataSourceProvider]] = ZLayer.fromEffectMany(
     Task.effect(DataSourceProvider.fallback).map(dsp => Has(dsp))
   ).orDie
+  val dataSourceTask = Task.effect {
+      println("creating datasource...")
+      val source = ConfigFactory.load
+      val config = new HikariConfig(propsFromConfigWithPrefix(source, "quill"))
+      new HikariDataSource(config).asInstanceOf[DataSource]
+    }
+
+  //val dataSourceLayer: ULayer[Has[DataSource]] = ZLayer.fromEffectMany(dataSourceTask.map(ds => Has(ds))).orDie
+
+  val dbMigration: ZIO[DataSource, Throwable, Any] = ZIO.environment[DataSource].flatMap(ds => 
+    ZIO.effectTotal(Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate())
+  )
+
+  val dbMigration2: ZIO[DataSource, Throwable, Any] = ZIO.access[DataSource](ds => 
+    ZIO.effectTotal(Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate())
+  )
+
+//  val dbMigrationWithDataSource = dataSourceTask.flatMap(dbMigration)
 
   val dbMigrationLayer: ZLayer[Has[DataSourceProvider], Nothing, Has[Unit]] = ZLayer.fromService(dsp =>
     Flyway
@@ -98,13 +116,23 @@ object ProtoQuillDemo extends zio.App:
   
   import caliban.GraphQL.graphQL
   import caliban.RootResolver
+  import caliban.schema.Annotations.{ GQLDeprecated, GQLDescription }
 
   object GraphQL {
+    case class PersonNamedArgs(name: String)
+    case class PersonOlderThanArgs(age: Int)
     case class Queries(
-      allPersons: RIO[Has[DataSourceProvider], List[Person]]
+      @GQLDescription("返回所有人员信息")
+      allPersons: RIO[Has[DataSourceProvider], List[Person]],
+      @GQLDescription("返回指定名字的人员")
+      personNamed: PersonNamedArgs => RIO[Has[DataSourceProvider], List[Person]],
+      @GQLDescription("返回大于指定年龄的人员")
+      personOlderThan: PersonOlderThanArgs => RIO[Has[DataSourceProvider], List[Person]]
     )
     val queryResolver = Queries(
-      allPersons = allPersonsPrepared.provideLayer(dataSourceLayer).orDie
+      allPersons = allPersonsPrepared.provideLayer(dataSourceLayer).orDie,
+      personNamed = (args: PersonNamedArgs) => personNamedPrepared(args.name).provideLayer(dataSourceLayer).orDie,
+      personOlderThan = (args: PersonOlderThanArgs) => personOlderThanPrepared(args.age).provideLayer(dataSourceLayer).orDie
     )
     implicit val queriesSchema: Schema[Has[DataSourceProvider], Queries] = Schema.gen
     val api = graphQL(RootResolver(queryResolver))

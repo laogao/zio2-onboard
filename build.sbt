@@ -26,6 +26,9 @@ lazy val protoquill = project
         exclude("com.lihaoyi", "sourcecode_2.13")
         exclude("com.lihaoyi", "fansi_2.13")
         exclude("com.lihaoyi", "pprint_2.13"),
+      "dev.zio" %% "zio-process" % "0.6.0",
+      "io.github.vigoo" %% "prox-zstream" % "0.7.4",
+      "io.getquill" %% "quill-jdbc-zio" % "3.12.0.Beta1.7",
       "org.postgresql" % "postgresql" % "42.3.1",
       "org.flywaydb" % "flyway-core" % "8.2.3",
       "com.typesafe" % "config" % "1.4.1",
