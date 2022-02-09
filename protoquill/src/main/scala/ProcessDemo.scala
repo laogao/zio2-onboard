@@ -10,6 +10,7 @@ import zio.Schedule
 import zio.ZIO
 import zio.clock.Clock
 import zio.Queue
+import zio.Chunk
 
 object ProcessDemo extends zio.App {
 
@@ -30,12 +31,12 @@ object ProcessDemo extends zio.App {
 
   val program1 = for {
     wd <- initWD
-    queue <- Queue.unbounded[Byte]
-    _ <- queue.offerAll("\ngetwd()\nx <- 1\nx".getBytes)//.repeat(Schedule.spaced(10.seconds))
+    queue <- Queue.unbounded[Chunk[Byte]]
+    _ <- queue.offer(Chunk.fromArray("\ngetwd()\nx <- 1\nx".getBytes))//.repeat(Schedule.spaced(10.seconds))
     // it seems that ProcessInput.fromStream requires you to `take` from the queue
-    r1 <- runR(wd).stdin(ProcessInput.fromStream(ZStream.fromQueue(queue))).linesStream.tap(line => putStrLn(line)).runDrain.fork
+    r1 <- runR(wd).stdin(ProcessInput.fromQueue(queue)).linesStream.tap(line => putStrLn(line)).runDrain.fork
     //r2 <- runR(wd).stdin(ProcessInput.fromStream(inputs)).linesStream.tap(line => putStrLn(line)).runDrain.fork
-    _ <- (queue.offerAll("\nSys.time()\nx <- 1\nx".getBytes) *> queue.size.tap(s => putStrLn(s.toString))).repeat(Schedule.spaced(100.milliseconds))
+    _ <- (queue.offer(Chunk.fromArray("\nSys.time()\nx <- 1\nx".getBytes)) *> queue.size.tap(s => putStrLn(s.toString))).repeat(Schedule.spaced(5000.milliseconds))
     _ <- queue.shutdown
     _ <- r1.join
   } yield ()
@@ -64,7 +65,7 @@ object ProcessDemo extends zio.App {
     _ <- res.join
   } yield ()
 
-  def run(args: List[String]) = program2.exitCode
+  def run(args: List[String]) = program1.exitCode
 
   // // using vanilla scala.sys.process
   //
